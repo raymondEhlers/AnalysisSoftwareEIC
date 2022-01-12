@@ -109,6 +109,8 @@ float _ch_EEMCG_pos_z = 1;
 float _ch_LFHCAL_pos_z = 1;
 float _ch_FOCAL_pos_z = 1;
 
+TGraphErrors* graphsM02Cuts[maxcalo]  = {NULL};
+
 // sorting function for towers
 bool acompare(towersStrct lhs, towersStrct rhs) { return lhs.tower_E > rhs.tower_E; }
 bool acompareTrueID(towersStrct lhs, towersStrct rhs) { return lhs.tower_trueID > rhs.tower_trueID; }
@@ -132,7 +134,7 @@ void setBOOLClusterArrayToZero(bool* &arrayinput){
 // conversion functions for processing
 
 float weightM02 = 4.5;
-float * CalculateM02andWeightedPosition(std::vector<towersStrct> cluster_towers, float w_0, float cluster_E_calc, int caloSelect, Bool_t debugOutput);
+float * CalculateM02andWeightedPosition(std::vector<towersStrct> cluster_towers, float cluster_E_calc, int caloSelect, Bool_t debugOutput);
 
 
 const int _maxNtowers1D = 200;
@@ -213,6 +215,85 @@ int GetCaloDirection(int caloID){
       return -1;
   }
   return -1;
+}
+
+float GetWeightCaloShowerShape(int caloID){
+  // increasing the weight makes the distributions wider
+  switch (caloID){
+    case kDRCALO: return 4.5;
+    case kFHCAL: return 4.5;
+    case kFEMC: return 3.5;
+    case kEHCAL: return 4.5;
+    case kEEMC: return 4.5;
+    case kHCALIN: return 4.5;
+    case kHCALOUT: return 4.5;
+    case kCEMC: return 4.5;
+    case kEEMCG: return 4.5;
+    case kLFHCAL: return 4.5;
+    case kBECAL: return 4.;
+    default:
+      std::cout << "GetCaloDirection: caloID " << caloID << " not defined, returning -1" << std::endl;
+      return -1;
+  }
+  return -1;
+}
+
+void LoadM02CutValueGraphs(TString nameFile){
+  TFile* fileTemp = new TFile(nameFile.Data(), "READ");
+  for (Int_t icalo = 0; icalo < maxcalo; icalo++){
+    graphsM02Cuts[icalo] = (TGraphErrors*)fileTemp->Get(Form("%s/M02CutVal90_%s", str_calorimeter[icalo].Data(), str_calorimeter[icalo].Data() ));
+    if (graphsM02Cuts[icalo]){
+      std::cout << "found M02 cut graph for "<< str_calorimeter[icalo].Data()<< endl;
+      graphsM02Cuts[icalo]->Print();
+    }
+  }
+}
+
+float GetM02CutValueForEMC(int caloID, float clusterE){
+  switch (caloID){
+    case kFEMC: 
+      if (graphsM02Cuts[caloID]){
+        if (clusterE > graphsM02Cuts[caloID]->GetX()[graphsM02Cuts[caloID]->GetN()-1])
+          return graphsM02Cuts[caloID]->GetY()[graphsM02Cuts[caloID]->GetN()-1];
+        else if (clusterE < graphsM02Cuts[caloID]->GetX()[0])
+          return graphsM02Cuts[caloID]->GetY()[0];
+        else 
+          return graphsM02Cuts[caloID]->Eval(clusterE);
+      } else {
+        return 1;
+      }
+      break;
+    case kEEMC: 
+      if (graphsM02Cuts[caloID]){
+        if (clusterE > graphsM02Cuts[caloID]->GetX()[graphsM02Cuts[caloID]->GetN()-1])
+          return graphsM02Cuts[caloID]->GetY()[graphsM02Cuts[caloID]->GetN()-1];
+        else if (clusterE < graphsM02Cuts[caloID]->GetX()[0])
+          return graphsM02Cuts[caloID]->GetY()[0];
+        else 
+          return graphsM02Cuts[caloID]->Eval(clusterE);
+      } else {
+        return 1;
+      }
+      break;
+    case kEEMCG: return 1;
+    case kBECAL: 
+      if (graphsM02Cuts[caloID]){
+        if (clusterE > graphsM02Cuts[caloID]->GetX()[graphsM02Cuts[caloID]->GetN()-1])
+          return graphsM02Cuts[caloID]->GetY()[graphsM02Cuts[caloID]->GetN()-1];
+        else if (clusterE < graphsM02Cuts[caloID]->GetX()[0])
+          return graphsM02Cuts[caloID]->GetY()[0];
+        else 
+          return graphsM02Cuts[caloID]->Eval(clusterE);
+      } else {
+        return 1;
+      }
+      break;
+    default:
+      std::cout << "GetM02CutValueForEMC: caloID " << caloID << " not defined, returning 1000" << std::endl;
+      return 1000;
+  }
+  return -1;
+  
 }
 
 
@@ -466,14 +547,15 @@ float ReturnEtaCaloMatching(int caloID, int caloID2){
 
 
 // ANCHOR function to determine shower shape
-float * CalculateM02andWeightedPosition(std::vector<towersStrct> cluster_towers, float w_0, float cluster_E_calc, int caloSelect, bool debugOutput){
-    static float returnVariables[7]; //0:M02, 1:M20, 2:eta, 3: phi
+float * CalculateM02andWeightedPosition(std::vector<towersStrct> cluster_towers, float cluster_E_calc, int caloSelect, bool debugOutput){
+    static float returnVariables[8]; //0:M02, 1:M20, 2:eta, 3: phi
     float w_tot = 0;
     std::vector<float> w_i;
     TVector3 vecTwr;
     TVector3 vecTwrTmp;
-    float zHC = 1;
-
+    float zHC     = 1;
+    float w_0     = GetWeightCaloShowerShape(caloSelect);
+    
     vecTwr = {0.,0.,0.};
     //calculation of weights and weighted position vector
     for(int cellI=0; cellI<(int)cluster_towers.size(); cellI++){
@@ -499,8 +581,12 @@ float * CalculateM02andWeightedPosition(std::vector<towersStrct> cluster_towers,
     float delta_phi_phi[4] = {0};
     float delta_eta_eta[4] = {0};
     float delta_eta_phi[4] = {0};
+    float dispersion = 0;
     int supModLeadingCell = -1;
     for(int cellI=0; cellI<(int)cluster_towers.size(); cellI++){
+//       vecTwrTmp = TowerPositionVectorFromIndicesGeometry(cluster_towers.at(cellI).tower_iEta,cluster_towers.at(cellI).tower_iPhi, cluster_towers.at(cellI).tower_iL, caloSelect);
+//       int iphi = vecTwrTmp.Phi();
+//       int ieta = vecTwrTmp.Eta();      
       int iphi=cluster_towers.at(cellI).tower_iPhi;
       int ieta=cluster_towers.at(cellI).tower_iEta;
       delta_phi_phi[1] += (w_i.at(cellI)*iphi*iphi)/w_tot;
@@ -514,7 +600,21 @@ float * CalculateM02andWeightedPosition(std::vector<towersStrct> cluster_towers,
       delta_eta_phi[1] += (w_i.at(cellI)*ieta*iphi)/w_tot;
       delta_eta_phi[2] += (w_i.at(cellI)*iphi)/w_tot;
       delta_eta_phi[3] += (w_i.at(cellI)*ieta)/w_tot;
+
+      vecTwrTmp = TowerPositionVectorFromIndicesGeometry(cluster_towers.at(cellI).tower_iEta,cluster_towers.at(cellI).tower_iPhi, cluster_towers.at(cellI).tower_iL, caloSelect);
+      if(IsForwardCalorimeter(caloSelect)){
+        // scale cluster position to z-plane
+        vecTwr*=abs(vecTwrTmp.Z()/vecTwr.Z());
+      } else {
+        // scale cluster position to same radial position as towers
+        vecTwr*=abs(sqrt(pow(vecTwrTmp.X(),2)+pow(vecTwrTmp.Y(),2))/sqrt(pow(vecTwr.X(),2)+pow(vecTwr.Y(),2)));
+      }
+      float dx2 = pow(vecTwrTmp.X()-vecTwr.X(),2);
+      float dy2 = pow(vecTwrTmp.Y()-vecTwr.Y(),2);
+      float dz2 = pow(vecTwrTmp.Z()-vecTwr.Z(),2);
+      dispersion+= (w_i.at(cellI)*(dx2+dy2+dz2))/w_tot;
     }
+    returnVariables[7]=dispersion;
     delta_phi_phi[0] = delta_phi_phi[1] - (delta_phi_phi[2] * delta_phi_phi[3]);
     delta_eta_eta[0] = delta_eta_eta[1] - (delta_eta_eta[2] * delta_eta_eta[3]);
     delta_eta_phi[0] = delta_eta_phi[1] - (delta_eta_phi[2] * delta_eta_phi[3]);
@@ -525,7 +625,6 @@ float * CalculateM02andWeightedPosition(std::vector<towersStrct> cluster_towers,
     returnVariables[0]=calcM02;
     returnVariables[1]=calcM20;
     return returnVariables;
-
 }
 
 
@@ -613,7 +712,8 @@ float getCalibrationValue(float clusterE, int caloEnum, int algoEnum, int MCtrue
       return 1.0;
   } else if(caloEnum == kEEMC){
     if(algoEnum==kMA){
-      return ( 2.21528e+00 + 7.34167e-02 * TMath::Log(clusterE) ) / ( 1 + ( 3.41200e-01 * TMath::Exp( ( clusterE + 4.66905e+02 ) / 3.10970e+02 ) ) );
+//       return ( 2.21528e+00 + 7.34167e-02 * TMath::Log(clusterE) ) / ( 1 + ( 3.41200e-01 * TMath::Exp( ( clusterE + 4.66905e+02 ) / 3.10970e+02 ) ) ); //2mm Carbon
+      return ( 2.21528e+00 + 7.34167e-02 * TMath::Log(clusterE) ) / ( 1 + ( 3.41200e-01 * TMath::Exp( ( clusterE + 4.66905e+02 ) / 3.10970e+02 ) ) )*1.04;  // 0.5mm Carbon
     } else {
       return 0.9;
     }
@@ -703,7 +803,7 @@ void fillHCalClustersIntoJetFindingInputs( int caloEnum, int clusterizerEnum,
 )
 {
   for(Int_t iclus=0; iclus<(Int_t)_clusters_calo[clusterizerEnum][caloEnum].size(); iclus++){
-      if(!(_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_isMatched){
+      // if(!(_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_isMatched){
           double pt = (_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_E / cosh((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_Eta);
           double px = pt * cos((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_Phi);
           double py = pt * sin((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_Phi);
@@ -720,7 +820,7 @@ void fillHCalClustersIntoJetFindingInputs( int caloEnum, int clusterizerEnum,
           jetf_all_py.push_back(py);
           jetf_all_pz.push_back(pz);
           jetf_all_E.push_back((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_E);
-      }
+      // }
   }
 }
 
@@ -733,7 +833,7 @@ void fillECalClustersIntoJetFindingInputs(
 )
 {
     for(Int_t iclus=0; iclus<(Int_t)_clusters_calo[clusterizerEnum][caloEnum].size(); iclus++){
-      if(!(_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_isMatched){
+      // if(!(_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_isMatched){
           double pt = (_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_E / cosh((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_Eta);
           double px = pt * cos((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_Phi);
           double py = pt * sin((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_Phi);
@@ -754,7 +854,7 @@ void fillECalClustersIntoJetFindingInputs(
           jetf_full_py.push_back(py);
           jetf_full_pz.push_back(pz);
           jetf_full_E.push_back((_clusters_calo[clusterizerEnum][caloEnum].at(iclus)).cluster_E);
-      }
+      // }
   }
 }
 

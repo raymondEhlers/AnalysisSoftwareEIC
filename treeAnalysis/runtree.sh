@@ -93,18 +93,60 @@ fi
 
 
 
-if [ $1 = "cades_singlemultipion" ]; then
-maxevt=-1
+if [ $1 = "cades_pythia_q2" ]; then
+maxevt=50000 #-1 #10000
+    input="/media/nschmidt/SSD/simulationOutputCADES/pythia_productions/merged_output_TTLGEO_7_HITS_P6_Q2_HEPMCVTXT_phpythia6_ep18x275_q2_100/pythia6_ep18x275.root"
+    geometry=/media/nschmidt/SSD/simulationOutputCADES/geometry.root
+    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_PYTHIA_TTL7_HEPMCVTXT_JETS",'$maxevt',true,true  ,false,0, 0, "anti-kt", 0.5, 30, false, false, false)'
+fi
+
+
+if [ $1 = "cades_singlepion6GeV" ]; then
+maxevt=1e6
     #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_output_TTLGEO_7_HITS_SimpleMultiPion/merged_output_TTLGEO_7_HITS_SimpleMultiPion.root
     input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion.root
     geometry=/media/nschmidt/SSD/simulationOutputCADES/geometry.root
-    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_SINGLEMULTIPION_TTLGEO7_EOP",'$maxevt',true,false  ,false,0,0,"anti-kt",0.5,30,false,false,false)'
+    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_SINGLEMULTIPION_TTLGEO7_Match_opencut",'$maxevt',true,false  ,true,0,0,"anti-kt",0.5,30,false,false,false)'
+fi
+
+
+if [ $1 = "cades_muon" ]; then
+maxevt=-1
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_output_TTLGEO_7_HITS_SimpleMultiPion/merged_output_TTLGEO_7_HITS_SimpleMultiPion.root
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion.root
+    input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/20211124/output_STANDALONE_EEMCH_BECAL_FEMC_HITS_5GeV_SimpleMultiMuon/output_STANDALONE_EEMCH_BECAL_FEMC_HITS_5GeV_SimpleMultiMuon.root
+    geometry=/media/nschmidt/SSD/simulationOutputCADES/geometry.root
+    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_MULTIMUON_ECALS",'$maxevt',true,false  ,true,0,0,"anti-kt",0.5,30,false,false,false)'
+fi
+if [ $1 = "cades_singlemultipionelec" ]; then
+maxevt=-1
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_output_TTLGEO_7_HITS_SimpleMultiPion/merged_output_TTLGEO_7_HITS_SimpleMultiPion.root
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion.root
+    input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiElectronPion/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiElectronPion.root
+    geometry=/media/nschmidt/SSD/simulationOutputCADES/geometry.root
+    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_SINGLEMULTIPIONELEC_TTLGEO7_Match",'$maxevt',true,false  ,true,0,0,"anti-kt",0.5,30,false,false,false)'
+fi
+if [ $1 = "cades_singlemultipion" ]; then
+maxevt=-1
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_output_TTLGEO_7_HITS_SimpleMultiPion/merged_output_TTLGEO_7_HITS_SimpleMultiPion.root
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion.root
+    input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiPion/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiPion.root
+    geometry=/media/nschmidt/SSD/simulationOutputCADES/geometry.root
+    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_SINGLEMULTIPION_TTLGEO7_Match",'$maxevt',true,false  ,true,0,0,"anti-kt",0.5,30,false,false,false)'
+fi
+if [ $1 = "cades_singlemultipion_eop" ]; then
+maxevt=-1
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_output_TTLGEO_7_HITS_SimpleMultiPion/merged_output_TTLGEO_7_HITS_SimpleMultiPion.root
+    #input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion/merged_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiPion.root
+    input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiPion/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiPion.root
+    geometry=/media/nschmidt/SSD/simulationOutputCADES/geometry.root
+    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_SINGLEMULTIPION_TTLGEO7_EOP2",'$maxevt',true,false  ,true,0,0,"anti-kt",0.5,30,false,false,false)'
 fi
 if [ $1 = "cades_singlemultielectron" ]; then
 maxevt=-1
-    input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiElectron/output_TTLGEO_7_HITS_PROJFIX_SimpleMultiElectron.root
+    input=/media/nschmidt/SSD/simulationOutputCADES/single_particle_productions/output_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiElectron/output_TTLGEO_7_HITS_MultFix_PROJFIX_SimpleMultiElectron.root
     geometry=/media/nschmidt/SSD/simulationOutputCADES/geometry.root
-    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_SINGLEMULTIELECTRON_TTLGEO7_EOP",'$maxevt',true,false  ,false,0,0,"anti-kt",0.5,30,false,false,false)'
+    root -x -l -b -q 'treeProcessing.C+("'$input'","'$geometry'","CADES_SINGLEMULTIELECTRON_TTLGEO7_EOP2",'$maxevt',true,false  ,false,0,0,"anti-kt",0.5,30,false,false,false)'
 fi
 
 if [ $1 = "centralsim_singleelectron" ]; then

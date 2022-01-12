@@ -18,12 +18,12 @@ const int _maxNclustersCentral = 2000;
 const int _maxNTracks = 200;
 const int _maxNProjections = 20000;
 const int _maxNMCPart = 100000;
-const int _maxNHepmcp = 1000;
+const int _maxNHepmcp = 100000;
 int verbosityBASE = 0;
 bool _useAlternateForProjections = false;
 float _nEventsTree;
 // TOF resolution
-double sigmat             = 20e-3; // ns
+double sigmat             = 25e-3; // ns
 // random number generator
 TRandom3 r3;
 
@@ -80,6 +80,7 @@ struct tofStrct{
 bool caloEnabled[20]      = {0};
 bool tracksEnabled        = 0;
 bool vertexEnabled        = 0;
+bool extendTimingInfo     = 0;
 bool hepMCavailable       = 0;
 bool xSectionEnabled      = 0;
 
@@ -202,6 +203,11 @@ int* _clusters_FEMC_trueID        = new int[_maxNclusters];
 float _vertex_x;
 float _vertex_y;
 float _vertex_z;
+float _vertex_true_x;
+float _vertex_true_y;
+float _vertex_true_z;
+
+Int_t trackID_ScatteredElectron = -1;
 
 // tracks
 int _nTracks;
@@ -210,7 +216,12 @@ float* _track_trueID             = new float[_maxNTracks];
 float* _track_px                 = new float[_maxNTracks];
 float* _track_py                 = new float[_maxNTracks];
 float* _track_pz                 = new float[_maxNTracks];
+float* _track_x                  = new float[_maxNTracks];
+float* _track_y                  = new float[_maxNTracks];
+float* _track_z                  = new float[_maxNTracks];
+short* _track_charge             = new short[_maxNTracks];
 unsigned short* _track_source             = new unsigned short[_maxNTracks];
+
 std::array<std::vector<int>, _maxNTracks> _track_RefProjID;
 // Initializes all elements to 0
 std::array<bool, _maxNTracks> _track_hasTTL{{}};
@@ -222,6 +233,11 @@ std::array<matchingCalStrct, _maxNTracks> _track_matchECal{{}};
 std::array<matchingCalStrct, _maxNTracks> _track_matchHCal{{}};
 std::array<std::vector<tofStrct>, _maxNTracks> _track_TOFmeas;
 
+// hadron PID
+float* _track_pion_LL           = new float[_maxNTracks];
+float* _track_kaon_LL           = new float[_maxNTracks];
+float* _track_proton_LL         = new float[_maxNTracks];
+
 int _nProjections;
 float* _track_ProjTrackID                 = new float[_maxNProjections];
 int* _track_ProjLayer                 = new int[_maxNProjections];
@@ -229,6 +245,9 @@ float* _track_Proj_x             = new float[_maxNProjections];
 float* _track_Proj_y             = new float[_maxNProjections];
 float* _track_Proj_z             = new float[_maxNProjections];
 float* _track_Proj_t             = new float[_maxNProjections];
+float* _track_Proj_px             = new float[_maxNProjections];
+float* _track_Proj_py             = new float[_maxNProjections];
+float* _track_Proj_pz             = new float[_maxNProjections];
 float* _track_Proj_true_x             = new float[_maxNProjections];
 float* _track_Proj_true_y             = new float[_maxNProjections];
 float* _track_Proj_true_z             = new float[_maxNProjections];
@@ -243,6 +262,9 @@ float* _mcpart_E                  = new float[_maxNMCPart];
 float* _mcpart_px                 = new float[_maxNMCPart];
 float* _mcpart_py                 = new float[_maxNMCPart];
 float* _mcpart_pz                 = new float[_maxNMCPart];
+float* _mcpart_x                 = new float[_maxNMCPart];
+float* _mcpart_y                 = new float[_maxNMCPart];
+float* _mcpart_z                 = new float[_maxNMCPart];
 float* _mcpart_Eta                = new float[_maxNMCPart];
 float* _mcpart_Phi                = new float[_maxNMCPart];
 int* _mcpart_BCID                 = new int[_maxNMCPart];
@@ -253,19 +275,23 @@ std::array<std::vector<projStrct>, _maxNMCPart> _mcpart_HcalProjs;
 // HepMC particles
 int _nHepmcp;
 int _hepmcp_procid;
+float _hepmcp_vtx_x;
+float _hepmcp_vtx_y;
+float _hepmcp_vtx_z;
+float _hepmcp_vtx_t;
 float _hepmcp_x1;
 float _hepmcp_x2;
 float _hepmcp_Q2;
-//float* _hepmcp_ID_parent = new float[_maxNHepmcp];
-int* _hepmcp_status = new int[_maxNHepmcp];
-int* _hepmcp_PDG = new int[_maxNHepmcp];
-float* _hepmcp_E = new float[_maxNHepmcp];
-float* _hepmcp_px = new float[_maxNHepmcp];
-float* _hepmcp_py = new float[_maxNHepmcp];
-float* _hepmcp_pz = new float[_maxNHepmcp];
-int* _hepmcp_m1 = new int[_maxNHepmcp];
-int* _hepmcp_m2 = new int[_maxNHepmcp];
-int* _hepmcp_BCID = new int[_maxNHepmcp];
+int*  _hepmcp_BCID            = new int[_maxNHepmcp];
+// float*  _hepmcp_ID_parent = new float[_maxNHepmcp];
+int*  _hepmcp_status          = new int[_maxNHepmcp];
+int*  _hepmcp_PDG             = new int[_maxNHepmcp];
+float*  _hepmcp_E             = new float[_maxNHepmcp];
+float*  _hepmcp_px            = new float[_maxNHepmcp];
+float*  _hepmcp_py            = new float[_maxNHepmcp];
+float*  _hepmcp_pz            = new float[_maxNHepmcp];
+int*  _hepmcp_m1              = new int[_maxNHepmcp];
+int*  _hepmcp_m2              = new int[_maxNHepmcp];
 
 TRandom3  _fRandom;                                  // random for effi generation
 
@@ -319,8 +345,16 @@ void SetBranchAddressesTree(TTree* inputTree){
       inputTree->SetBranchAddress("tracks_px",            _track_px);
       inputTree->SetBranchAddress("tracks_py",            _track_py);
       inputTree->SetBranchAddress("tracks_pz",            _track_pz);
+      inputTree->SetBranchAddress("tracks_x",             _track_x);
+      inputTree->SetBranchAddress("tracks_y",             _track_y);
+      inputTree->SetBranchAddress("tracks_z",             _track_z);
       inputTree->SetBranchAddress("tracks_trueID",        _track_trueID);
       inputTree->SetBranchAddress("tracks_source",        _track_source);
+      inputTree->SetBranchAddress("tracks_charge",        _track_charge);
+
+      inputTree->SetBranchAddress("track_pion_LL",	  _track_pion_LL);
+      inputTree->SetBranchAddress("track_kaon_LL",	  _track_kaon_LL);
+      inputTree->SetBranchAddress("track_proton_LL",	  _track_proton_LL);
 
       inputTree->SetBranchAddress("nProjections",         &_nProjections);
       inputTree->SetBranchAddress("track_ProjTrackID",    _track_ProjTrackID);
@@ -330,6 +364,9 @@ void SetBranchAddressesTree(TTree* inputTree){
       inputTree->SetBranchAddress("track_TLP_y",           _track_Proj_y);
       inputTree->SetBranchAddress("track_TLP_z",           _track_Proj_z);
       inputTree->SetBranchAddress("track_TLP_t",           _track_Proj_t);
+      inputTree->SetBranchAddress("track_TLP_px",          _track_Proj_px);
+      inputTree->SetBranchAddress("track_TLP_py",          _track_Proj_py);
+      inputTree->SetBranchAddress("track_TLP_pz",          _track_Proj_pz);
       inputTree->SetBranchAddress("track_TLP_true_x",      _track_Proj_true_x);
       inputTree->SetBranchAddress("track_TLP_true_y",      _track_Proj_true_y);
       inputTree->SetBranchAddress("track_TLP_true_z",      _track_Proj_true_z);
@@ -483,22 +520,37 @@ void SetBranchAddressesTree(TTree* inputTree){
       inputTree->SetBranchAddress("vertex_x",                     &_vertex_x);
       inputTree->SetBranchAddress("vertex_y",                     &_vertex_y);
       inputTree->SetBranchAddress("vertex_z",                     &_vertex_z);
+      inputTree->SetBranchAddress("vertex_true_x",                &_vertex_true_x);
+      inputTree->SetBranchAddress("vertex_true_y",                &_vertex_true_y);
+      inputTree->SetBranchAddress("vertex_true_z",                &_vertex_true_z);
     }
     // MC particles
-    inputTree->SetBranchAddress("nMCPart",       &_nMCPart);
-    inputTree->SetBranchAddress("mcpart_ID",     _mcpart_ID);
-    inputTree->SetBranchAddress("mcpart_ID_parent",     _mcpart_ID_parent);
-    inputTree->SetBranchAddress("mcpart_PDG",    _mcpart_PDG);
-    inputTree->SetBranchAddress("mcpart_E",      _mcpart_E);
-    inputTree->SetBranchAddress("mcpart_px",     _mcpart_px);
-    inputTree->SetBranchAddress("mcpart_py",     _mcpart_py);
-    inputTree->SetBranchAddress("mcpart_pz",     _mcpart_pz);
-    inputTree->SetBranchAddress("mcpart_BCID",     _mcpart_BCID);
+
+    inputTree->SetBranchAddress("nMCPart",          &_nMCPart);
+    inputTree->SetBranchAddress("mcpart_ID",        _mcpart_ID);
+    inputTree->SetBranchAddress("mcpart_ID_parent", _mcpart_ID_parent);
+    inputTree->SetBranchAddress("mcpart_PDG",       _mcpart_PDG);
+    inputTree->SetBranchAddress("mcpart_E",         _mcpart_E);
+    inputTree->SetBranchAddress("mcpart_px",        _mcpart_px);
+    inputTree->SetBranchAddress("mcpart_py",        _mcpart_py);
+    inputTree->SetBranchAddress("mcpart_pz",        _mcpart_pz);
+    inputTree->SetBranchAddress("mcpart_BCID",      _mcpart_BCID);
+    if (inputTree->GetBranchStatus("mcpart_x") ){
+      extendTimingInfo = 1;
+      inputTree->SetBranchAddress("mcpart_x",         _mcpart_x);
+      inputTree->SetBranchAddress("mcpart_y",         _mcpart_y);
+      inputTree->SetBranchAddress("mcpart_z",         _mcpart_z);
+    }
+
 
     if (inputTree->GetBranchStatus("nHepmcp") ){
       hepMCavailable = 1;
       inputTree->SetBranchAddress("nHepmcp", &_nHepmcp);
       inputTree->SetBranchAddress("hepmcp_procid", &_hepmcp_procid);
+      inputTree->SetBranchAddress("hepmcp_vtx_x", &_hepmcp_vtx_x);
+      inputTree->SetBranchAddress("hepmcp_vtx_y", &_hepmcp_vtx_y);
+      inputTree->SetBranchAddress("hepmcp_vtx_z", &_hepmcp_vtx_z);
+      inputTree->SetBranchAddress("hepmcp_vtx_t", &_hepmcp_vtx_t);
       inputTree->SetBranchAddress("hepmcp_x1", &_hepmcp_x1);
       inputTree->SetBranchAddress("hepmcp_x2", &_hepmcp_x2);
       inputTree->SetBranchAddress("hepmcp_Q2", &_hepmcp_Q2);
@@ -628,7 +680,7 @@ TString GetProjectionNameFromIndex(int projindex)
     case 65:   return "EEMC_glass_0";
     case 66:   return "BECAL";
     case 5:    //return "FHCAL";
-    case 67:   
+    case 67:
       return "LFHCAL";
     case 140:  return "LFHCAL_0";
     case 141:  return "LFHCAL_1";
@@ -651,7 +703,7 @@ Int_t GetRegionFromEta(float etaMC){
     return 1;
   else if (etaMC > nominalEtaRegion[2][0] && etaMC < nominalEtaRegion[2][1] )
     return 2;
-  else 
+  else
     return -1;
 }
 
@@ -770,8 +822,8 @@ int ReturnCalorimeterFromProjectionIndex(int projID){
     case 63: return kHCALOUT;
     case 64: return kCEMC;
     case 65: return kEEMCG;
-    case 67: 
-    case 5: 
+    case 67:
+    case 5:
       return kLFHCAL;
     case 66: return kBECAL;
     case 85: return kFOCAL;
@@ -931,9 +983,9 @@ Bool_t IsCaloProjection(Int_t layerID){
 //__________________________________________________________________________________________________________
 Bool_t IsECalProjection(Int_t layerID, bool alternate = false){
   if (!alternate){
-    switch (layerID){  
-      case 6: 
-      case 61: 
+    switch (layerID){
+      case 6:
+      case 61:
       case 64:
       case 65:
       case 66:
@@ -942,10 +994,10 @@ Bool_t IsECalProjection(Int_t layerID, bool alternate = false){
         return kFALSE;
     }
   } else {
-    switch (layerID){      
-      case 0:     
-      case 3:     
-      case 7:     
+    switch (layerID){
+      case 0:
+      case 3:
+      case 7:
         return kTRUE;
       default:
         return kFALSE;
@@ -957,9 +1009,9 @@ Bool_t IsECalProjection(Int_t layerID, bool alternate = false){
 //__________________________________________________________________________________________________________
 Bool_t IsHCalProjection(Int_t layerID, bool alternate = false){
   if (!alternate){
-    switch (layerID){  
-      case 5: 
-      case 60: 
+    switch (layerID){
+      case 5:
+      case 60:
       case 62:
       case 63:
       case 67:
@@ -976,10 +1028,10 @@ Bool_t IsHCalProjection(Int_t layerID, bool alternate = false){
         return kFALSE;
     }
   } else {
-    switch (layerID){      
-      case 0:     
-      case 3:     
-      case 7:     
+    switch (layerID){
+      case 0:
+      case 3:
+      case 7:
         return kTRUE;
       default:
         return kFALSE;
@@ -1038,19 +1090,19 @@ int GetCorrectMCArrayEntry(float objectTrueID){
 //__________________________________________________________________________________________________________
 bool  GetMaxCoordinateCalo( float &maxcoord, int caloID){
   switch (caloID){
-    case kDRCALO: 
+    case kDRCALO:
       maxcoord = 262.+ 15.;
       return kFALSE;
-    case kFHCAL: 
+    case kFHCAL:
       maxcoord = 262.+ 15.;
       return kFALSE;
-    case kFEMC: 
+    case kFEMC:
       maxcoord = 182.655 + 15.;
       return kFALSE;
-    case kEHCAL: 
+    case kEHCAL:
       maxcoord = 260 + 15;
       return kFALSE;
-    case kEEMC: 
+    case kEEMC:
       maxcoord = 61. + 6.;
       return kFALSE;
     case kHCALIN:
@@ -1059,16 +1111,16 @@ bool  GetMaxCoordinateCalo( float &maxcoord, int caloID){
     case kHCALOUT:
       maxcoord = 350;
       return kTRUE;
-    case kCEMC: 
+    case kCEMC:
       maxcoord = 230;
       return kTRUE;
-    case kEEMCG: 
+    case kEEMCG:
       maxcoord = 67.;
       return kFALSE;
-    case kLFHCAL: 
+    case kLFHCAL:
       maxcoord = 262.+ 15.;
       return kFALSE;
-    case kBECAL: 
+    case kBECAL:
       maxcoord = 230;
       return kTRUE;
     case kFOCAL:
@@ -1083,19 +1135,19 @@ bool  GetMaxCoordinateCalo( float &maxcoord, int caloID){
 //__________________________________________________________________________________________________________
 bool  GetMinCoordinateCalo( float &mincoord, int caloID){
   switch (caloID){
-    case kDRCALO: 
+    case kDRCALO:
       mincoord = 262.+ 15.;
       return kFALSE;
-    case kFHCAL: 
+    case kFHCAL:
       mincoord = 262.+ 15.;
       return kFALSE;
-    case kFEMC: 
+    case kFEMC:
       mincoord = 182.655 + 15.;
       return kFALSE;
-    case kEHCAL: 
+    case kEHCAL:
       mincoord = 260 + 15;
       return kFALSE;
-    case kEEMC: 
+    case kEEMC:
       mincoord = 61. + 6.;
       return kFALSE;
     case kHCALIN:
@@ -1104,16 +1156,16 @@ bool  GetMinCoordinateCalo( float &mincoord, int caloID){
     case kHCALOUT:
       mincoord = -305;
       return kTRUE;
-    case kCEMC: 
+    case kCEMC:
       mincoord = -305;
       return kTRUE;
-    case kEEMCG: 
+    case kEEMCG:
       mincoord = 67.;
       return kFALSE;
-    case kLFHCAL: 
+    case kLFHCAL:
       mincoord = 262.+ 15.;
       return kFALSE;
-    case kBECAL: 
+    case kBECAL:
       mincoord = -305;
       return kTRUE;
     case kFOCAL:
@@ -1141,18 +1193,29 @@ void prepareMCMatchInfo(){
     _mcpart_RecTrackIDs[(int)_track_trueID[itrk]].push_back(itrk);
   }
   Int_t nCurrProj = 0;
+  trackID_ScatteredElectron = -1;
   for(Int_t itrk=0; itrk<_nTracks; itrk++){
     if (verbosityBASE > 2) std::cout << "current track: " << itrk <<std::endl;
     unsigned short trackSource = _track_source[itrk];
     TVector3 trackVecP(_track_px[itrk],_track_py[itrk],_track_pz[itrk]);
+    if (_track_trueID[itrk] >= 0 && trackSource == 0){
+      Int_t mcID = _track_trueID[itrk];
+      if (_mcpart_PDG[mcID] == 11){
+        int bcid = _mcpart_BCID[mcID]-1;
+        if (_hepmcp_status[bcid] == 1 && _hepmcp_status[_hepmcp_m1[bcid]-1] > 1)
+          trackID_ScatteredElectron = itrk;
+      }
+    }
+
     for(Int_t iproj=nCurrProj; iproj<_nProjections; iproj++){
       if (itrk != _track_ProjTrackID[iproj])
         continue;
-      if (_track_Proj_t[iproj] < 0)
+      if (_track_Proj_t[iproj] < 0 )
         continue;
-      double projectionR = TMath::Sqrt(_track_Proj_x[iproj]*_track_Proj_x[iproj]+_track_Proj_y[iproj]*_track_Proj_y[iproj]);      
-      if(TMath::Abs(_track_Proj_t[iproj])< 2.e-20){
-        if (verbosityBASE > 5) std::cout << iproj << "\t projection layer: "<< _track_ProjLayer[iproj] << "\t t: " << _track_Proj_t[iproj] 
+      double projectionR = TMath::Sqrt(_track_Proj_x[iproj]*_track_Proj_x[iproj]+_track_Proj_y[iproj]*_track_Proj_y[iproj]);
+      double hit3d = TMath::Sqrt(_track_Proj_true_x[iproj]*_track_Proj_true_x[iproj]+_track_Proj_true_y[iproj]*_track_Proj_true_y[iproj]+_track_Proj_true_z[iproj]*_track_Proj_true_z[iproj]);
+      if(TMath::Abs(_track_Proj_true_t[iproj])< 2.e-20){
+        if (verbosityBASE > 5) std::cout << iproj << "\t projection layer: "<< _track_ProjLayer[iproj] << "\t t: " << _track_Proj_t[iproj]
                                             << "\t x: " << _track_Proj_x[iproj] << "\t y: " << _track_Proj_y[iproj] << "\t z: " << _track_Proj_z[iproj] << "\t r: " << projectionR << std::endl;
 
         continue;
@@ -1171,43 +1234,76 @@ void prepareMCMatchInfo(){
       if (IsCaloProjection(_track_ProjLayer[iproj])){
         float minVal = 0;
         float maxVal = 0;
-        int calID    = ReturnCalorimeterFromProjectionIndex(_track_ProjLayer[iproj]); 
+        int calID    = ReturnCalorimeterFromProjectionIndex(_track_ProjLayer[iproj]);
         bool useZ = GetMinCoordinateCalo( minVal, calID);
         GetMaxCoordinateCalo( maxVal, calID);
         if (useZ){
           if ( !(_track_Proj_z[iproj] > minVal && _track_Proj_z[iproj] < maxVal)) continue;
         } else {
-          
+
           if ( projectionR > maxVal ) continue;
-        } 
+        }
         _track_Proj_Clas[iproj] = 5;
       }
       if (IsFarForwardProjection(_track_ProjLayer[iproj])){
         _track_Proj_Clas[iproj] = 6;
       }
       if (_track_Proj_Clas[iproj] < 5){
-        if (IsTrackerLayer(_track_ProjLayer[iproj]) && _track_Proj_true_t[iproj] != 0 ){
+        if (IsTrackerLayer(_track_ProjLayer[iproj]) && _track_Proj_true_t[iproj] != 0 && hit3d > 0.1){
           _track_nTrL[itrk]++;
         }
-        if (HasTimingLayer(_track_ProjLayer[iproj]) && _track_Proj_true_t[iproj] != 0 ){
-          _track_nTTL[itrk]++;
-          _track_hasTTL[itrk]     = (_track_hasTTL[itrk] || HasTimingLayer(_track_ProjLayer[iproj]));
-          
+        if (HasTimingLayer(_track_ProjLayer[iproj]) && _track_Proj_true_t[iproj] != 0 && hit3d > 0.1){
+
+          // correct path length for geometry and vertex effects
+          float corrPathTTL       = TMath::Sqrt(pow(_track_Proj_true_x[iproj],2) + pow(_track_Proj_true_y[iproj],2) + pow(_track_Proj_true_z[iproj],2)) -
+                                    TMath::Sqrt(pow(_track_Proj_x[iproj],2) + pow( _track_Proj_y[iproj],2) + pow(_track_Proj_z[iproj],2));
+          float corrPathVtx       = 0;
+          if ((int)_track_trueID[itrk] > -1 && extendTimingInfo){
+            // point of closest approach - MC origin
+            corrPathVtx            = TMath::Sqrt(pow(_track_x[itrk],2) + pow( _track_y[itrk],2) + pow(_track_z[itrk],2)) -
+                                     TMath::Sqrt(pow(_mcpart_x[(int)_track_trueID[itrk]],2) + pow(_mcpart_y[(int)_track_trueID[itrk]],2) + pow(_mcpart_z[(int)_track_trueID[itrk]],2));
+          }
+          Float_t pathlengthcorr  = _track_Proj_t[iproj] + corrPathTTL + corrPathVtx; //
+
+          if (TMath::Abs(corrPathTTL) > 5 && verbosityBASE > 3){
+            float_t Rproj = TMath::Sqrt(_track_Proj_x[iproj]*_track_Proj_x[iproj] + _track_Proj_y[iproj]*_track_Proj_y[iproj]  ) ;
+            float_t Rtrue = TMath::Sqrt(_track_Proj_true_x[iproj]*_track_Proj_true_x[iproj] + _track_Proj_true_y[iproj]*_track_Proj_true_y[iproj] ) ;
+            std::cout << "layer ID: "<< _track_ProjLayer[iproj] << "\t p\t" << trackVecP.Mag() << "\t path length org: " << _track_Proj_t[iproj] << "\t TTL corr \t" <<  corrPathTTL << "\t Vtx corr \t"<< corrPathVtx << " corrected path length "<< pathlengthcorr << " \t eta \t " << trackVecP.Eta() << std::endl;
+
+            std::cout <<  "\t\t projection: " << _track_Proj_x[iproj] << "\t" << _track_Proj_y[iproj] << "\t" <<  _track_Proj_z[iproj] << "\t R " << Rproj <<
+                          "\t\t hit: " << _track_Proj_true_x[iproj] << "\t" << _track_Proj_true_y[iproj] << "\t" <<  _track_Proj_true_z[iproj]  << "\t" <<  _track_Proj_true_t[iproj] << "\t R \t" << Rtrue << "\n\n"<< std::endl;
+          }
+          if ( TMath::Abs(corrPathVtx) > 3 && verbosityBASE > 3){
+            float_t Rproj = TMath::Sqrt(pow(_track_x[itrk],2) + pow( _track_y[itrk],2) + pow(_track_z[itrk],2));
+            float_t Rtrue = 0;
+            if ((int)_track_trueID[itrk] > -1 && extendTimingInfo){
+              Rtrue = TMath::Sqrt(pow(_mcpart_x[(int)_track_trueID[itrk]],2) + pow(_mcpart_y[(int)_track_trueID[itrk]],2) + pow(_mcpart_z[(int)_track_trueID[itrk]],2));
+              std::cout << "layer ID: "<< _track_ProjLayer[iproj] << "\t p\t" << trackVecP.Mag() << "\t path length org: " << _track_Proj_t[iproj] << "\t TTL corr \t" <<  corrPathTTL << "\t Vtx corr \t"<< corrPathVtx << " corrected path length "<< pathlengthcorr << " \t eta \t " << trackVecP.Eta() << "\n\n" << std::endl;
+              std::cout <<  "\t\t track start: " << _track_x[itrk] << "\t" << _track_y[itrk] << "\t" <<  _track_z[itrk] <<
+                          "\t\t true start: " << _mcpart_x[(int)_track_trueID[itrk]] << "\t" << _mcpart_y[(int)_track_trueID[itrk]] << "\t" <<  _mcpart_z[(int)_track_trueID[itrk]]  << "\t 3D R\t" << Rproj << "\t" << Rtrue << "\n\n"<< std::endl;
+            }
+          }
           // check whether this is an electron in the backward or barrel with momentum > 3 GeV => assume that's the scattered electron
           bool isProbEScat = false;
           if ((int)_track_trueID[itrk] > -1){
-            if ( (fabs(_mcpart_PDG[(int)_track_trueID[itrk]]) == 11 && trackVecP.Eta() < 0.5 && trackVecP.Mag() > 3))
+            if ( (fabs(_mcpart_PDG[(int)_track_trueID[itrk]]) == 11 && trackVecP.Eta() < 0.5 && trackVecP.Mag() > 1))
               isProbEScat = true;
           }
-          // tof construct
-          tofStrct tempTOF = tofStrct(_track_Proj_t[iproj], r3.Gaus(_track_Proj_true_t[iproj], sigmat), _track_Proj_true_t[iproj], isProbEScat );
-          _track_TOFmeas[itrk].push_back(tempTOF);
-        } 
+          // only store tof info if vertex correction is smaller than 5cm, otherwise this is a secondary or something went terribly wrong otherwise
+          if (TMath::Abs(corrPathVtx) < 5){
+            _track_nTTL[itrk]++;
+            _track_hasTTL[itrk]     = (_track_hasTTL[itrk] || HasTimingLayer(_track_ProjLayer[iproj]));
+
+            // tof construct
+            tofStrct tempTOF = tofStrct(pathlengthcorr, r3.Gaus(_track_Proj_true_t[iproj], sigmat), _track_Proj_true_t[iproj], isProbEScat );
+            _track_TOFmeas[itrk].push_back(tempTOF);
+          }
+        }
       }
       if (verbosityBASE > 3) std::cout << "timing layer count: " << _track_nTTL[itrk] << std::endl;
       if ( (_track_Proj_Clas[iproj] < 4 && _track_Proj_true_t[iproj] > 1e-3) ||  _track_Proj_Clas[iproj] == 5 || _track_Proj_Clas[iproj] == 6  )
         _track_RefProjID[itrk].push_back(iproj);
-      
+
       if (_track_Proj_Clas[iproj] == 5 && (int)_track_trueID[itrk] > 0){
         projStrct tempProj;
         if ( IsECalProjection(_track_ProjLayer[iproj], _useAlternateForProjections) && trackSource == 0  && _track_Proj_t[iproj] >= 0  ){
@@ -1226,7 +1322,7 @@ void prepareMCMatchInfo(){
           _mcpart_HcalProjs[(int)_track_trueID[itrk]].push_back(tempProj);
         }
       }
-      nCurrProj = iproj;      
+      nCurrProj = iproj;
     }
     if (trackSource == 1 )
       _track_hasOL[itrk] = (_track_hasOL[itrk] || true);
@@ -1249,8 +1345,10 @@ void prepareMCMatchInfo(){
 
     _track_matchECal[itrk] = matchingCalStrct();
     _track_matchHCal[itrk] = matchingCalStrct();
-
   }
+  if (verbosityBASE > 0)
+    if (trackID_ScatteredElectron != -1) std::cout << "found scattered electron: " << trackID_ScatteredElectron << std::endl;
+
 }
 
 // **********************************************************************************************
@@ -1287,7 +1385,7 @@ void clearMCRecMatchVectors(){
        _track_TOFmeas[itrk].clear();
       _track_TOFmeas[itrk].resize(0);
     }
-    
+
   }
   for (Int_t iproj=0; iproj<_nProjections; iproj++){
     _track_Proj_Clas[iproj] = 0;

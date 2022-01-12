@@ -30,6 +30,9 @@
 #include "pi0studies.cxx"
 #include "tofpid.cxx"
 
+#include "disreconstruction.cxx"
+#include "electronpid.cxx"
+
 using std::cout;
 using std::endl;
 
@@ -42,15 +45,15 @@ void treeProcessing(
     bool do_reclus              = true,
     bool do_jetfinding          = false,
     bool runCaloRes             = true,
+    bool isSingleParticleProd   = false,
     Int_t verbosity             = 0,
     // Defaults to tracking from all layers.
     unsigned short primaryTrackSource = 0,
     bool removeTracklets        = false,
+    bool brokenProjections      = true,               // use this to true with outputs for prod4, newer output switch it to false
     std::string jetAlgorithm    = "anti-kt",
     std::vector<double> jetRParameters = {0.3, 0.5, 0.8, 1.0},
-    double tracked_jet_max_pT   = 30,
-    bool brokenProjections      = true,               // use this to true with outputs for prod4, newer output switch it to false
-    bool isSingleParticleProd   = false
+    double tracked_jet_max_pT   = 30
 ){
     // make output directory
     TString dateForOutput = ReturnDateStr();
@@ -58,6 +61,7 @@ void treeProcessing(
     gSystem->Exec("mkdir -p "+outputDir);
     gSystem->Exec("mkdir -p "+outputDir + "/etaphi");
 
+	bool _do_jetfinding = false;
     if(do_jetfinding) _do_jetfinding = true;
     // switch projection layer to most appropriate
     if (brokenProjections){
@@ -66,7 +70,9 @@ void treeProcessing(
     } else {
       std::cout << "using calorimeter projections for matching" << std::endl;
     }
-    bool runPi0Reco = false;
+
+    LoadM02CutValueGraphs("output_ShowerShape.root");
+
     // load tree
     // NOTE: This relies on pythia6 or pythia8 being in the filename + path, but that seems to be a reasonable assumption
     bool isPythia6 = false;
@@ -117,6 +123,7 @@ void treeProcessing(
     if(_doClusterECalibration){
         std::cout << "clusters will be energy-corrected and subsequently smeared to meet testbeam constant term!" << std::endl;
     }
+
     // Additional setup
     // Jet energy scale + resolution only support one R, so we select it here
     double jetRForJES = 0.5;
@@ -380,6 +387,7 @@ void treeProcessing(
             }
           }
         }
+
         if(do_reclus && kMA<_active_algo && _do_jetfinding){
           // ANCHOR FEMC cluster loop variables:
           // for(Int_t iclus=0; iclus<_nclusters_FEMC; iclus++){
@@ -651,6 +659,10 @@ void treeProcessing(
             }
             // TString jettype[njettypes] = {"track", "full","hcal","calo","all"};
         }
+
+        disreconstruction();
+        electronpid();
+
         if(tracksEnabled){
           if(verbosity>1) std::cout << "running trackingefficiency" << std::endl;
           trackingefficiency();
@@ -660,8 +672,9 @@ void treeProcessing(
           trackingcomparison();
           if(verbosity>1) std::cout << "finished tracking studies" << std::endl;
         }
-        if (runPi0Reco){
+        if (addOutputName.Contains("PI0")){
           pi0studies();
+          if(verbosity>1) std::cout << "finished pi0 studies" << std::endl;
         }
         if (runCaloRes){
           if(verbosity>1) std::cout << "running clusterstudies" << std::endl;
@@ -677,6 +690,7 @@ void treeProcessing(
         clearMCRecMatchVectors();
 
     } // event loop end
+/*
     if (_do_jetfinding) {
         std::cout << "saving event level observables\n";
         eventObservables.Write(outputDir.Data());
@@ -705,6 +719,7 @@ void treeProcessing(
     }
     std::cout << "running jetresolutionhistosSave" << std::endl;
     jetresolutionhistosSave();
+*/
     if (runCaloRes){
       std::cout << "running caloresolutionhistosSave" << std::endl;
       caloresolutionhistossave();
@@ -731,7 +746,8 @@ void treeProcessing(
       std::cout << "running hitstudiesSave" << std::endl;
       hitstudiesSave();
     }
-    if(runPi0Reco){
+    if(addOutputName.Contains("PI0")){
+      std::cout << "running pi0studiesSave" << std::endl;
       pi0studiesSave();
     }
     if(tracksEnabled) {
@@ -766,6 +782,8 @@ int main( int argc, char* argv[] )
     std::vector<double> jetRParameters = {0.3, 0.5, 0.8, 1.0};
     double tracked_jet_max_pT   = 30;
     bool removeTracklets        = false;
+    bool brokenProjections      = false;
+    bool isSingleParticleProd   = false;
 
     // Import main call arguments
         TString import;
@@ -822,9 +840,11 @@ int main( int argc, char* argv[] )
         do_reclus,
         do_jetfinding,
         runCaloRes,
+        isSingleParticleProd,
         verbosity,
         primaryTrackSource,
         removeTracklets,
+        brokenProjections,
         jetAlgorithm,
         jetRParameters,
         tracked_jet_max_pT
