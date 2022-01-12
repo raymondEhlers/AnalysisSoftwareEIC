@@ -6,8 +6,8 @@ double eta_track;
 double pT_track;
 double theta_track;
 double phi_track;
-double E_clusters_all[maxcalo];	
-double E_clusters_match[maxcalo];	
+double E_clusters_all[maxcalo];
+double E_clusters_match[maxcalo];
 double Emax_cluster_M02;
 double Emax_cluster_M20;
 double E_MC;
@@ -15,7 +15,7 @@ double E_MC;
 void reset_variables();
 
 void make_epid_tree(TString epidFilename) {
-	
+
 	epidFile = new TFile(epidFilename, "RECREATE");
 	epidTree = new TTree("T", "Track and cluster tree for ePID");
 	epidTree->Branch("p_track",		&p_track,		"p_track/D");
@@ -25,12 +25,12 @@ void make_epid_tree(TString epidFilename) {
 	epidTree->Branch("phi_track",		&phi_track,		"phi_track/D");
 	epidTree->Branch("E_clusters_all",	E_clusters_all,		"E_clusters_all[11]/D");
 	epidTree->Branch("E_clusters_match",	E_clusters_match,	"E_clusters_match[11]/D");
-	epidTree->Branch("Emax_cluster_M02",	&Emax_cluster_M02,	"Emax_cluster_M02/D");	
-	epidTree->Branch("Emax_cluster_M20",	&Emax_cluster_M20,	"Emax_cluster_M20/D");	
+	epidTree->Branch("Emax_cluster_M02",	&Emax_cluster_M02,	"Emax_cluster_M02/D");
+	epidTree->Branch("Emax_cluster_M20",	&Emax_cluster_M20,	"Emax_cluster_M20/D");
 	epidTree->Branch("E_MC",		&E_MC,			"E_MC/D");
 }
 
-void electronpid(int evnum) {
+void electronpid() {
 
 	Int_t fTrackSource = 0;
 	Int_t fClusterAlgo = 0;
@@ -51,8 +51,8 @@ void electronpid(int evnum) {
 
 		double maxClusterE = 0.;
 
-		for (Int_t icalo = 0; icalo < maxcalo; icalo++) {		
-			
+		for (Int_t icalo = 0; icalo < maxcalo; icalo++) {
+
 			for(Int_t iclus=0; iclus<(Int_t)_clusters_calo[fClusterAlgo][icalo].size(); iclus++) {
 
 				E_clusters_all[icalo]+=(_clusters_calo[fClusterAlgo][icalo].at(iclus)).cluster_E;
@@ -70,7 +70,7 @@ void electronpid(int evnum) {
 								Emax_cluster_M20 = (_clusters_calo[fClusterAlgo][icalo].at(iclus)).cluster_M20;
 							}
 
-						}					
+						}
 
 					} // track match loop
 
@@ -80,7 +80,7 @@ void electronpid(int evnum) {
 
 		} // calo loop
 
-		for(int imcp = 0; imcp < _nMCPart; imcp++) {		
+		for(int imcp = 0; imcp < _nMCPart; imcp++) {
 			if(_mcpart_ID[imcp] == 1 && _mcpart_ID_parent[imcp] == 0 && _mcpart_PDG[imcp] == 11) {
 				E_MC = _mcpart_E[imcp];
 			}
@@ -100,7 +100,7 @@ void write_epid_tree() {
 
 	epidFile->cd();
 	epidTree->Write();
-	epidFile->Close();	
+	epidFile->Close();
 
 }
 
